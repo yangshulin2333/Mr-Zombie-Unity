@@ -21,6 +21,10 @@ public class PlayerController : MonoBehaviour
     private Vector2 moveInput;
     private bool isHoldingBreath;
 
+    // 👇 新增这行！给僵尸留个后门，让它能读取你的状态
+    // 意思：外部问 IsHidden 吗？我就把 isHoldingBreath 的值告诉它。
+    public bool IsHidden => isHoldingBreath;
+
     void Awake()
     {
         controls = new GameControls();
