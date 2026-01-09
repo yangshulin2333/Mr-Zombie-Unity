@@ -1,23 +1,28 @@
 ﻿using UnityEngine;
-using UnityEngine.AI; // 📢 注意：必须引入这个，才能用 NavMeshAgent
+using UnityEngine.AI;
 
 public class ZombieController : MonoBehaviour
 {
     [Header("僵尸设置")]
-    public float chaseSpeed = 3.5f; // 追击速度
+    public float chaseSpeed = 3.5f;
 
-    private NavMeshAgent agent;   // 僵尸的“腿” (自动寻路组件)
-    private Transform player;     // 主角的位置
-    private PlayerController playerScript; // 主角的脚本 (用来查屏息状态)
+    private NavMeshAgent agent;
+    private Transform player;
+    private PlayerController playerScript;
+
+    // 👇 1. 新增：我们要控制的动画组件
+    private Animator anim;
 
     void Start()
     {
-        // 1. 获取自己的寻路组件
         agent = GetComponent<NavMeshAgent>();
         agent.speed = chaseSpeed;
 
-        // 2. 自动在场景里找主角
-        // FindAnyObjectByType 会自动找到挂了 PlayerController 的物体
+        // 👇 2. 新增：自动去子物体里找 Animator
+        // 因为脚本挂在父物体上，而 Animator 在子物体(那个模型)上
+        // 所以必须用 GetComponentInChildren (注意有个 Children)
+        anim = GetComponentInChildren<Animator>();
+
         var p = FindAnyObjectByType<PlayerController>();
         if (p != null)
         {
@@ -28,22 +33,26 @@ public class ZombieController : MonoBehaviour
 
     void Update()
     {
-        // 如果没找到主角，就不动
         if (player == null) return;
 
-        // --- 核心 AI 逻辑 ---
+        // --- 👇 3. 新增：动画状态判断 ---
+        // 只要移动速度大于 0.1，就认为是在跑
+        bool isMoving = agent.velocity.sqrMagnitude > 0.1f;
 
-        // 问主角：你现在是藏着的吗？(屏息了吗？)
+        // 把这个状态传给 Animator 里的 "isRunning" 开关
+        // 如果 anim 没找到(比如你忘了加 Animator)，这行会报错，所以加个判断
+        if (anim != null)
+        {
+            anim.SetBool("isRunning", isMoving);
+        }
+
+        // --- 原有的 AI 逻辑 ---
         if (playerScript.IsHidden)
         {
-            // 情况A：玩家屏息了 -> 僵尸失去目标
-            // 逻辑：原地停下，假装听不见
             agent.ResetPath();
         }
         else
         {
-            // 情况B：玩家在呼吸 -> 僵尸听到声音 -> 追！
-            // SetDestination 会自动计算绕过障碍物的最短路径
             agent.SetDestination(player.position);
         }
     }
