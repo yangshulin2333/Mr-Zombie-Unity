@@ -10,7 +10,7 @@ public class ZombieController : MonoBehaviour
     private Transform player;
     private PlayerController playerScript;
 
-    // 👇 1. 新增：我们要控制的动画组件
+    // 动画组件
     private Animator anim;
 
     void Start()
@@ -18,11 +18,10 @@ public class ZombieController : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         agent.speed = chaseSpeed;
 
-        // 👇 2. 新增：自动去子物体里找 Animator
-        // 因为脚本挂在父物体上，而 Animator 在子物体(那个模型)上
-        // 所以必须用 GetComponentInChildren (注意有个 Children)
+        // 获取子物体里的动画机
         anim = GetComponentInChildren<Animator>();
 
+        // 自动寻找主角
         var p = FindAnyObjectByType<PlayerController>();
         if (p != null)
         {
@@ -35,25 +34,36 @@ public class ZombieController : MonoBehaviour
     {
         if (player == null) return;
 
-        // --- 👇 3. 新增：动画状态判断 ---
-        // 只要移动速度大于 0.1，就认为是在跑
-        bool isMoving = agent.velocity.sqrMagnitude > 0.1f;
-
-        // 把这个状态传给 Animator 里的 "isRunning" 开关
-        // 如果 anim 没找到(比如你忘了加 Animator)，这行会报错，所以加个判断
+        // --- 1. 动画逻辑 ---
         if (anim != null)
         {
+            // 只要有速度，就播放跑动画
+            bool isMoving = agent.velocity.sqrMagnitude > 0.1f;
             anim.SetBool("isRunning", isMoving);
         }
 
-        // --- 原有的 AI 逻辑 ---
-        if (playerScript.IsHidden)
+        // --- 2. AI 追击逻辑 (包含屏息判断) ---
+        // 如果主角藏起来了(IsHidden)，僵尸就停下发呆
+        if (playerScript != null && playerScript.IsHidden)
         {
-            agent.ResetPath();
+            agent.ResetPath(); // 停止寻路
         }
         else
         {
-            agent.SetDestination(player.position);
+            agent.SetDestination(player.position); // 继续追
+        }
+    }
+
+    // 👇👇👇 Day 5 新增：咬人判定 👇👇👇
+    private void OnTriggerEnter(Collider other)
+    {
+        // 如果撞到的东西标签是 "Player"
+        if (other.CompareTag("Player"))
+        {
+            Debug.Log(">>> 咬到你了！游戏结束！💀");
+
+            // 暂停游戏
+            Time.timeScale = 0;
         }
     }
 }
